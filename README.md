@@ -1,17 +1,23 @@
 ## I2C slave protocol to answer to multiple addresses for the RP2040
 
-This is a pio program for the RP2040 that implements I2C slave protocol and answers to any address. It is compatible with the [SDK](https://raspberrypi.github.io/pico-sdk-doxygen/) and [Arduino](https://github.com/earlephilhower/arduino-pico).
+This is a pio program for the RP2040 that implements I2C slave protocol and answers to multiple addresses. It is compatible with the [SDK](https://raspberrypi.github.io/pico-sdk-doxygen/) and [Arduino](https://github.com/earlephilhower/arduino-pico).
 
 How to use it:
 
-- With SDK. Add *i2c_slave_multi.pio* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](src/CMakeLists.txt).
+- With SDK. Add *i2c_slave_multi.pio* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](sdk/CMakeLists.txt).
 - With Arduino. Add *i2c_slave_multi.pio.h* to your project.
 - Define required handlers: receive, request and stop. Handlers are optional.
 - Set pointer to write buffer.
+- Enable desired I2C addresses to send and receive data.
 
-See [main.c](src/main.c) with code example. 
+Use pull up resistors (1k to 3.3k)
+
+See [main.c](sdk/main.c) with code example. 
 
 Occupies one entire pio.
+
+<p align="center"><img src="./images/screenshot.png" width="800"><br>  
+  <i>RP2040 as I2C slave (left), receving and sending data to multiple I2C addresses sent from I2C master (right)</i><br><br></p>
 
 Functions:  
 \
