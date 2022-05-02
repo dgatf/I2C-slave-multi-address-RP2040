@@ -21,7 +21,9 @@
  * -------------------------------------------------------------------------------
  */
 
-#include "i2c_multi.pio.h"
+extern "C" {
+#include "i2c_multi_pio.h"
+}
 
 PIO pio = pio0;
 uint pin = 7;

@@ -4,8 +4,8 @@ This is a pio program for the RP2040 that implements I2C slave protocol and answ
 
 How to use it:
 
-- With SDK. Add *i2c_slave_multi.pio* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](sdk/CMakeLists.txt).
-- With Arduino. Add *i2c_slave_multi.pio.h* to your project.
+- With SDK. Add *i2c_slave_multi.pio, i2c_slave_multi_pio.h and i2c_slave_multi_pio.c* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](sdk/CMakeLists.txt).
+- With Arduino. Add *i2c_slave_multi.pio.h, i2c_slave_multi_pio.h and i2c_slave_multi_pio.c* to your project.
 - Define required handlers: receive, request and stop. Handlers are optional.
 - Set pointer to write buffer.
 - Enable desired I2C addresses to send and receive data.
@@ -87,18 +87,18 @@ Returns:
 \
 Handler functions:  
 \
-**void i2c_multi_receive_handler(uint8_t data, bool is_address)**  
+**void receive_handler(uint8_t data, bool is_address)**  
 
 Parameters received:  
 &nbsp;&nbsp;**data** - byte or address received   
 &nbsp;&nbsp;**is_address** - true is address, false is byte received  
 \
-**void i2c_multi_request_handler(uint8_t address)**  
+**void request_handler(uint8_t address)**  
 
 Parameters received:  
 &nbsp;&nbsp;**address** - I2C address   
 \
-**void i2c_multi_stop_handler(uint8_t lenght)**  
+**void stop_handler(uint8_t lenght)**  
 
 Parameters received:  
 &nbsp;&nbsp;**lenght** - number of bytes received or sent   
