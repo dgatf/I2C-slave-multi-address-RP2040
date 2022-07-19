@@ -53,9 +53,9 @@ void i2c_request_handler(uint8_t address)
     }
 }
 
-void i2c_stop_handler(uint8_t lenght)
+void i2c_stop_handler(uint8_t length)
 {
-    printf("\nTotal bytes: %u", lenght);
+    printf("\nTotal bytes: %u", length);
 }
 
 int main()

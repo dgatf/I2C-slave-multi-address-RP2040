@@ -4,7 +4,7 @@ static i2c_multi_t *i2c_multi;
 
 static void (*receive_handler)(uint8_t data, bool is_address) = NULL;
 static void (*request_handler)(uint8_t address) = NULL;
-static void (*stop_handler)(uint8_t lenght) = NULL;
+static void (*stop_handler)(uint8_t length) = NULL;
 
 static inline void start_condition_program_init(PIO pio, uint sm, uint offset, uint pin);
 static inline void stop_condition_program_init(PIO pio, uint sm, uint offset, uint pin);

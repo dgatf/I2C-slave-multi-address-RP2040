@@ -57,9 +57,9 @@ void i2c_request_handler(uint8_t address)
     }
 }
 
-void i2c_stop_handler(uint8_t lenght)
+void i2c_stop_handler(uint8_t length)
 {
-    sprintf(str_out, "\nTotal bytes: %u", lenght);
+    sprintf(str_out, "\nTotal bytes: %u", length);
     Serial.print(str_out);
 }
 
