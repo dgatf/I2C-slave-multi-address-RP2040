@@ -98,7 +98,7 @@ Parameters received:
 Parameters received:  
 &nbsp;&nbsp;**address** - I2C address   
 \
-**void stop_handler(uint8_t lenght)**  
+**void stop_handler(uint8_t length)**  
 
 Parameters received:  
-&nbsp;&nbsp;**lenght** - number of bytes received or sent   
+&nbsp;&nbsp;**length** - number of bytes received or sent   
