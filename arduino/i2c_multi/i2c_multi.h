@@ -1,5 +1,5 @@
-#ifndef I2C_MULTI_PIO
-#define I2C_MULTI_PIO
+#ifndef I2C_MULTI
+#define I2C_MULTI
 
 #include <stdlib.h>
 #include "pico/stdlib.h"

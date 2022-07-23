@@ -4,8 +4,8 @@ This is a pio program for the RP2040 that implements I2C slave protocol and answ
 
 How to use it:
 
-- With SDK. Add *i2c_slave_multi.pio, i2c_slave_multi_pio.h and i2c_slave_multi_pio.c* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](sdk/CMakeLists.txt).
-- With Arduino. Add *i2c_slave_multi.pio.h, i2c_slave_multi_pio.h and i2c_slave_multi_pio.c* to your project.
+- With SDK. Add *i2c_multi.pio, i2c_multi.h and i2c_multi.c* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](sdk/CMakeLists.txt).
+- With Arduino. Add *i2c_multi.pio.h, i2c_multi.h and i2c_multi.c* to your project.
 - Define required handlers: receive, request and stop. Handlers are optional.
 - Set pointer to write buffer.
 - Enable desired I2C addresses to send and receive data.

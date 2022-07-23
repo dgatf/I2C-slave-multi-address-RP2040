@@ -10,7 +10,7 @@ pico_sdk_init()
 
 add_executable(${PROJECT_NAME} 
     main.c
-    i2c_multi_pio.c
+    i2c_multi.c
 )
 
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/i2c_multi.pio)

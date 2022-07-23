@@ -1,4 +1,4 @@
-#include "i2c_multi_pio.h"
+#include "i2c_multi.h"
 
 static i2c_multi_t *i2c_multi;
 

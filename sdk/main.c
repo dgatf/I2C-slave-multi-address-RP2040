@@ -16,13 +16,13 @@
  *
  *  Add external pull ups, 1k - 3.3k
  *
- *  Define handlers and write buffer
+ *  Define handlers, write buffer and enable addresses
  *
  * -------------------------------------------------------------------------------
  */
 
 #include <stdio.h>
-#include "i2c_multi.pio.h"
+#include "i2c_multi.h"
 
 PIO pio = pio0;
 uint pin = 7;
