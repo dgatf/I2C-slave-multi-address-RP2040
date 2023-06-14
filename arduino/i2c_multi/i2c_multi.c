@@ -216,7 +216,7 @@ static inline void byte_handler_pio()
     i2c_multi->bytes_count++;
     if (i2c_multi->status != I2C_WRITE)
     {
-        received = pio_sm_get_blocking(i2c_multi->pio, i2c_multi->sm_read);
+      received = transpond_byte(pio_sm_get_blocking(i2c_multi->pio, i2c_multi->sm_read) >> 24); // Do the bit-reverse here as PIO instructions are scarce
     }
     if (i2c_multi->status == I2C_IDLE)
     {
