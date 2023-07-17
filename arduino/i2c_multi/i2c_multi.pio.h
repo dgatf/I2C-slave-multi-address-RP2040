@@ -37,11 +37,11 @@
 #define start_condition_offset_start 2u
 
 static const uint16_t start_condition_program_instructions[] = {
-    0xc001, //  0: irq    nowait 1  // Ensure a stop has been handled, in case this is a repeat start
+    0xc001, //  0: irq    nowait 1                   
     0xc004, //  1: irq    nowait 4                   
             //     .wrap_target
     0x20a0, //  2: wait   1 pin, 0                   
-    0x2c20, //  3: wait   0 pin, 0  [12] // Wait for falling edge of SDA + 1us before checking SCL
+    0x2c20, //  3: wait   0 pin, 0               [12]
     0x00c0, //  4: jmp    pin, 0                     
             //     .wrap
 };
@@ -73,8 +73,8 @@ static const uint16_t stop_condition_program_instructions[] = {
     0xc001, //  0: irq    nowait 1                   
             //     .wrap_target
     0x2020, //  1: wait   0 pin, 0                   
-    0x2ca0, //  2: wait   1 pin, 0       [12]  // 1us@12.5MHz before checking SCL
-    0x00c0, //  3: jmp    pin, 0                                        
+    0x2ca0, //  2: wait   1 pin, 0               [12]
+    0x00c0, //  3: jmp    pin, 0                     
             //     .wrap
 };
 
@@ -110,8 +110,8 @@ static const uint16_t read_byte_program_instructions[] = {
     0x0043, //  6: jmp    x--, 3                     
     0x8000, //  7: push   noblock                    
     0x60f0, //  8: out    exec, 16                   
-    0x60f0, //  9: out    exec, 16   
-    0x0008, // 10: jmp    8                         
+    0x60f0, //  9: out    exec, 16                   
+    0x0008, // 10: jmp    8                          
     0xc005, // 11: irq    nowait 5                   
             //     .wrap
 };
@@ -126,7 +126,6 @@ static const struct pio_program read_byte_program = {
 static inline pio_sm_config read_byte_program_get_default_config(uint offset) {
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset + read_byte_wrap_target, offset + read_byte_wrap);
-    sm_config_set_sideset(&c, 2, true, false);
     return c;
 }
 #endif
@@ -141,15 +140,14 @@ static inline pio_sm_config read_byte_program_get_default_config(uint offset) {
 static const uint16_t do_ack_program_instructions[] = {
             //     .wrap_target
     0x2021, //  0: wait   0 pin, 1                   
-    0xe083, //  1: set    pindirs, 3
-    0xef00, //  2: set    pins, 0                   [15]   // Drive SCL low for clock stretching and SDA low to force ACK
-    0xc020, //  3: irq    wait 0  
-
+    0xe083, //  1: set    pindirs, 3                 
+    0xef00, //  2: set    pins, 0                [15]
+    0xc020, //  3: irq    wait 0                     
     0xe081, //  4: set    pindirs, 1                 
     0x20a1, //  5: wait   1 pin, 1                   
     0x2021, //  6: wait   0 pin, 1                   
     0x0001, //  7: jmp    1                          
-    0x000b, //  8: jmp    11                    
+    0x000b, //  8: jmp    11                         
     0xff80, //  9: set    pindirs, 0             [31]
     0x0000, // 10: jmp    0                          
     0xa042, // 11: nop                               
