@@ -9,7 +9,7 @@
  *
  * -------------------------------------------------------------------------------
  *
- *  I2C slave - answer to multiple addresses
+ *  I2C slave multi - answer to multiple addresses
  *
  *  SDA = pin
  *  SCL = pin + 1
@@ -21,12 +21,10 @@
  * -------------------------------------------------------------------------------
  */
 
-extern "C" {
 #include "i2c_multi.h"
-}
 
 PIO pio = pio0;
-uint pin = 7;
+uint pin = 0;
 uint8_t buffer[64] = {0};
 char str_out[64];
 

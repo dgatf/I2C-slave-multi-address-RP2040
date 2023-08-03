@@ -1,4 +1,5 @@
 build/
+misc/
 .vscode/configurationCache.log
 .vscode/dryrun.log
 .vscode/targets.log

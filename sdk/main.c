@@ -22,10 +22,11 @@
  */
 
 #include <stdio.h>
+#include "pico/stdlib.h"
 #include "i2c_multi.h"
 
 PIO pio = pio0;
-uint pin = 7;
+uint pin = 0;
 uint8_t buffer[64] = {0};
 
 void i2c_receive_handler(uint8_t data, bool is_address)
@@ -70,7 +71,7 @@ int main()
     i2c_multi_set_stop_handler(i2c_stop_handler);
     i2c_multi_set_write_buffer(buffer);
 
-    while (1)
+    while (true)
     {
     }
 }

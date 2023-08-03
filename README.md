@@ -49,15 +49,15 @@ Parameters:
 Parameters:  
 &nbsp;&nbsp;**buffer** - write buffer  
 \
-**void i2c_multi_disable()**  
+**void i2c_multi_disable(void)**  
 
 Sets I2C on hold. Disables I2C pio states machines  
 \
-**void i2c_multi_restart()**  
+**void i2c_multi_restart(void)**  
 
 Restart I2C pio states machines and the byte counter  
 \
-**void i2c_multi_remove()**  
+**void i2c_multi_remove(void)**  
 
 Removes I2C pio states machines, handlers, write buffer and counter  
 \
@@ -71,10 +71,10 @@ Parameters:
 Parameters:  
 &nbsp;&nbsp;**address** - disable I2C address  
 \
-**void i2c_multi_enable_all_addresses()**  
+**void i2c_multi_enable_all_addresses(void)**  
 Enables all I2C addresses  
 \
-**void i2c_multi_disable_all_addresses()**  
+**void i2c_multi_disable_all_addresses(void)**  
 Disables all I2C addresses  
 \
 **bool i2c_multi_is_address_enabled(uint8_t address)**  
@@ -101,4 +101,5 @@ Parameters received:
 **void stop_handler(uint8_t length)**  
 
 Parameters received:  
-&nbsp;&nbsp;**length** - number of bytes received or sent   
+&nbsp;&nbsp;**length** - number of bytes received or sent  
+

@@ -10,8 +10,8 @@ static inline void start_condition_program_init(PIO pio, uint sm, uint offset, u
 static inline void stop_condition_program_init(PIO pio, uint sm, uint offset, uint pin);
 static inline void read_byte_program_init(PIO pio, uint sm, uint offset, uint pin);
 static inline void write_byte_program_init(PIO pio, uint sm, uint offset, uint pin);
-static inline void byte_handler_pio();
-static inline void stop_handler_pio();
+static inline void byte_handler_pio(void);
+static inline void stop_handler_pio(void);
 static inline uint8_t transpond_byte(uint8_t byte);
 
 void i2c_multi_init(PIO pio, uint pin)
@@ -86,7 +86,7 @@ void i2c_multi_disable_address(uint8_t address)
     i2c_multi->address[address / 32] &= ~(1 << (address % 32));
 }
 
-void i2c_multi_enable_all_addresses()
+void i2c_multi_enable_all_addresses(void)
 {
     i2c_multi->address[0] = 0xFFFFFFFF;
     i2c_multi->address[1] = 0xFFFFFFFF;
@@ -94,7 +94,7 @@ void i2c_multi_enable_all_addresses()
     i2c_multi->address[3] = 0xFFFFFFFF;
 }
 
-void i2c_multi_disable_all_addresses()
+void i2c_multi_disable_all_addresses(void)
 {
     i2c_multi->address[0] = 0;
     i2c_multi->address[1] = 0;
@@ -107,7 +107,7 @@ bool i2c_multi_is_address_enabled(uint8_t address)
     return i2c_multi->address[address / 32] & (1 << (address % 32));
 }
 
-void i2c_multi_disable()
+void i2c_multi_disable(void)
 {
     pio_sm_set_enabled(i2c_multi->pio, i2c_multi->sm_read, false);
     pio_sm_set_enabled(i2c_multi->pio, i2c_multi->sm_write, false);
@@ -122,7 +122,7 @@ void i2c_multi_disable()
     i2c_multi->buffer = i2c_multi->buffer_start;
 }
 
-void i2c_multi_restart()
+void i2c_multi_restart(void)
 {
     i2c_multi_disable();
     pio_sm_restart(i2c_multi->pio, i2c_multi->sm_start);
@@ -137,7 +137,7 @@ void i2c_multi_restart()
     pio_sm_set_enabled(i2c_multi->pio, i2c_multi->sm_stop, true);
 }
 
-void i2c_multi_remove()
+void i2c_multi_remove(void)
 {
     receive_handler = NULL;
     request_handler = NULL;
@@ -207,7 +207,7 @@ static inline void write_byte_program_init(PIO pio, uint sm, uint offset, uint p
     pio_sm_set_enabled(pio, sm, true);
 }
 
-static inline void byte_handler_pio()
+static inline void byte_handler_pio(void)
 {
     uint8_t received = 0;
     bool is_address = false;
@@ -290,7 +290,7 @@ static inline void byte_handler_pio()
     pio_interrupt_clear(i2c_multi->pio, 0);
 }
 
-static inline void stop_handler_pio()
+static inline void stop_handler_pio(void)
 {
     pio_interrupt_clear(i2c_multi->pio, 1);
     if (i2c_multi->status == I2C_IDLE)
