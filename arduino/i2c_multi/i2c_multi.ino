@@ -28,8 +28,7 @@ uint pin = 0;
 uint8_t buffer[64] = {0};
 char str_out[64];
 
-void i2c_receive_handler(uint8_t data, bool is_address)
-{
+void i2c_receive_handler(uint8_t data, bool is_address) {
     if (is_address)
         sprintf(str_out, "\nAddress: %X, receiving...", data);
     else
@@ -37,34 +36,28 @@ void i2c_receive_handler(uint8_t data, bool is_address)
     Serial.print(str_out);
 }
 
-void i2c_request_handler(uint8_t address)
-{
+void i2c_request_handler(uint8_t address) {
     sprintf(str_out, "\nAddress: %X, request...", address);
     Serial.print(str_out);
-
-    switch (address)
-    {
-    case 0x70:
-        buffer[0] = 0x10;
-        buffer[1] = 0x11;
-        buffer[2] = 0x12;
-        break;
-    case 0x71:
-        sprintf((char *)buffer, "Hello, I'm %X", address);
-        break;
+    switch (address) {
+        case 0x70:
+            buffer[0] = 0x10;
+            buffer[1] = 0x11;
+            buffer[2] = 0x12;
+            break;
+        case 0x71:
+            sprintf((char *)buffer, "Hello, I'm %X", address);
+            break;
     }
 }
 
-void i2c_stop_handler(uint8_t length)
-{
+void i2c_stop_handler(uint8_t length) {
     sprintf(str_out, "\nTotal bytes: %u", length);
     Serial.print(str_out);
 }
 
-void setup()
-{
+void setup() {
     Serial.begin(115200);
-
     i2c_multi_init(pio, pin);
     i2c_multi_enable_address(0x70);
     i2c_multi_enable_address(0x71);
@@ -74,6 +67,4 @@ void setup()
     i2c_multi_set_write_buffer(buffer);
 }
 
-void loop()
-{
-}
+void loop() {}
