@@ -85,6 +85,9 @@ Parameters:
 Returns:  
 &nbsp;&nbsp;true if enabled, false if disabled  
 \
+**void i2c_multi_fixed_length(int16_t length)**  
+Releases the bus after the length of bytes is sent. Useful for buggy I2C masters  
+\
 Handler functions:  
 \
 **void receive_handler(uint8_t data, bool is_address)**  
@@ -103,3 +106,13 @@ Parameters received:
 Parameters received:  
 &nbsp;&nbsp;**length** - number of bytes received or sent  
 
+
+### Change log
+
+[v1.1](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1)
+- Reduced from 32 pio instructions to 28
+- Increased speed up to 1M  
+- Added function i2c_multi_fixed_length to release the bus after length of bytes is sent  
+
+[v1.0](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.0)
+- Initial release  
