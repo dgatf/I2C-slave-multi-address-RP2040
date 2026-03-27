@@ -10,7 +10,7 @@ How to use it:
 - Set pointer to write buffer.
 - Enable desired I2C addresses to send and receive data.
 
-Use pull up resistors (1k to 3.3k). Use lower resitor for high speeds
+**Use pull up resistors (1k to 3.3k)**. Use lower resitor for high speeds
 
 See [main.c](sdk/main.c) with code example. 
 
