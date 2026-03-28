@@ -1,118 +1,216 @@
-## I2C slave protocol to answer to multiple addresses for the RP2040
+# I2C slave protocol for multiple addresses on RP2040
 
-This is a pio program for the RP2040 that implements I2C slave protocol and answers to multiple addresses. It is compatible with the [SDK](https://raspberrypi.github.io/pico-sdk-doxygen/) and [Arduino](https://github.com/earlephilhower/arduino-pico).
+This library implements an I2C slave protocol for the RP2040 using PIO, with support for responding to multiple I2C addresses.
 
-How to use it:
+It is compatible with both the [Pico SDK](https://raspberrypi.github.io/pico-sdk-doxygen/) and [Arduino-Pico](https://github.com/earlephilhower/arduino-pico).
 
-- With SDK. Add *i2c_multi.pio, i2c_multi.h and i2c_multi.c* to your project. Modify CMakeLists.txt. Add *pico_generate_pio_header* and the required libraries (pico_stdlib, hardware_irq, hardware_pio, hardware_i2c). See [CMakeLists.txt](sdk/CMakeLists.txt).
-- With Arduino. Add *i2c_multi.pio.h, i2c_multi.h and i2c_multi.c* to your project.
-- Define required handlers: receive, request and stop. Handlers are optional.
-- Set pointer to write buffer.
-- Enable desired I2C addresses to send and receive data.
+## Features
 
-**Use pull up resistors (1k to 3.3k)**. Use lower resitor for high speeds
+- I2C slave implemented in PIO
+- Supports multiple I2C addresses
+- Compatible with Pico SDK and Arduino
+- Optional receive, request, and stop handlers
+- Supports fixed-length transfers for compatibility with buggy I2C masters
+- Up to 2 MHz in v1.1
+- Uses one full PIO instance
 
-See [main.c](sdk/main.c) with code example. 
+## Usage
 
-Occupies one entire pio.
+### Pico SDK
 
-<p align="center"><img src="./images/screenshot.png" width="800"><br>  
-  <i>RP2040 as I2C slave (left), receving and sending data to multiple I2C addresses sent from I2C master (right)</i><br><br></p>
+Add the following files to your project:
 
-Functions:  
-\
-**void i2c_multi_init(pio, pin)**  
+- `i2c_multi.pio`
+- `i2c_multi.h`
+- `i2c_multi.c`
 
-Must be called in first place
+Then update your `CMakeLists.txt` to:
 
-Parameters:  
-&nbsp;&nbsp;**pio** - load the pio program at pio0 or pio1  
-&nbsp;&nbsp;**pin** - set SDA at pin and SCL at pin + 1  
-\
-**void i2c_multi_set_receive_handler(i2c_receive_handler_t i2c_receive_handler)**  
+- call `pico_generate_pio_header`
+- link the required libraries:
+  - `pico_stdlib`
+  - `hardware_irq`
+  - `hardware_pio`
+  - `hardware_i2c`
 
-Parameters:  
-&nbsp;&nbsp;**i2c_receive_handler** - receive handler function  
-\
-**void i2c_multi_set_request_handler(i2c_request_handler_t i2c_request_handler)**  
+See [sdk/CMakeLists.txt](sdk/CMakeLists.txt) for an example.
 
-Parameters:  
-&nbsp;&nbsp;**i2c_request_handler** - request handler function  
-\
-**void i2c_multi_set_stop_handler(i2c_stop_handler_t 2c_stop_handler)**  
+### Arduino
 
-Parameters:  
-&nbsp;&nbsp;**i2c_stop_handler** - stop handler function  
-\
-**void i2c_multi_set_write_buffer(uint8_t buffer)**  
+Add the following files to your project:
 
-Parameters:  
-&nbsp;&nbsp;**buffer** - write buffer  
-\
-**void i2c_multi_disable(void)**  
+- `i2c_multi.pio.h`
+- `i2c_multi.h`
+- `i2c_multi.c`
 
-Sets I2C on hold. Disables I2C pio states machines  
-\
-**void i2c_multi_restart(void)**  
+### Basic setup
 
-Restart I2C pio states machines and the byte counter  
-\
-**void i2c_multi_remove(void)**  
+- Define the receive, request, and stop handlers if needed
+- Set the write buffer pointer
+- Enable the I2C addresses you want to use for communication
 
-Removes I2C pio states machines, handlers, write buffer and counter  
-\
-**void i2c_multi_enable_address(uint8_t address)**  
+## Hardware notes
 
-Parameters:  
-&nbsp;&nbsp;**address** - enable I2C address  
-\
-**void i2c_multi_disable_address(uint8_t address)**  
+**Use pull-up resistors from 1 kΩ to 3.3 kΩ.**  
+Use lower resistor values for higher bus speeds.
 
-Parameters:  
-&nbsp;&nbsp;**address** - disable I2C address  
-\
-**void i2c_multi_enable_all_addresses(void)**  
-Enables all I2C addresses  
-\
-**void i2c_multi_disable_all_addresses(void)**  
-Disables all I2C addresses  
-\
-**bool i2c_multi_is_address_enabled(uint8_t address)**  
+See [sdk/main.c](sdk/main.c) for a usage example.
 
-Parameters:  
-&nbsp;&nbsp;**address** - check wheter I2C address is enabled  
+<p align="center">
+  <img src="./images/screenshot.png" width="800"><br>
+  <i>RP2040 configured as an I2C slave (left), receiving and sending data through multiple I2C addresses from an I2C master (right)</i>
+</p>
 
-Returns:  
-&nbsp;&nbsp;true if enabled, false if disabled  
-\
-**void i2c_multi_fixed_length(int16_t length)**  
-Releases the bus after the length of bytes is sent. Useful for buggy I2C masters  
-\
-Handler functions:  
-\
-**void receive_handler(uint8_t data, bool is_address)**  
+## API reference
 
-Parameters received:  
-&nbsp;&nbsp;**data** - byte or address received   
-&nbsp;&nbsp;**is_address** - true is address, false is byte received  
-\
-**void request_handler(uint8_t address)**  
+### `void i2c_multi_init(pio, pin)`
 
-Parameters received:  
-&nbsp;&nbsp;**address** - I2C address   
-\
-**void stop_handler(uint8_t length)**  
+Must be called first.
 
-Parameters received:  
-&nbsp;&nbsp;**length** - number of bytes received or sent  
+**Parameters**
+- `pio` - PIO instance where the program will be loaded (`pio0` or `pio1`)
+- `pin` - SDA pin number; SCL is assigned to `pin + 1`
 
+---
 
-### Change log
+### `void i2c_multi_set_receive_handler(i2c_receive_handler_t i2c_receive_handler)`
 
-[v1.1](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1)
-- Reduced from 32 pio instructions to 28
-- Increased speed up to 2M    
-- Added function i2c_multi_fixed_length to release the bus after length of bytes is sent  
+Sets the receive handler.
 
-[v1.0](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.0)
-- Initial release  
+**Parameters**
+- `i2c_receive_handler` - function called when data or an address is received
+
+---
+
+### `void i2c_multi_set_request_handler(i2c_request_handler_t i2c_request_handler)`
+
+Sets the request handler.
+
+**Parameters**
+- `i2c_request_handler` - function called when the master requests data
+
+---
+
+### `void i2c_multi_set_stop_handler(i2c_stop_handler_t i2c_stop_handler)`
+
+Sets the stop handler.
+
+**Parameters**
+- `i2c_stop_handler` - function called when a STOP condition is detected
+
+---
+
+### `void i2c_multi_set_write_buffer(uint8_t \*buffer)`
+
+Sets the write buffer.
+
+**Parameters**
+- `buffer` - write buffer
+
+---
+
+### `void i2c_multi_disable(void)`
+
+Puts I2C on hold by disabling the PIO state machines.
+
+---
+
+### `void i2c_multi_restart(void)`
+
+Restarts the PIO state machines and resets the byte counter.
+
+---
+
+### `void i2c_multi_remove(void)`
+
+Removes the PIO state machines and clears handlers, write buffer, and byte counter.
+
+---
+
+### `void i2c_multi_enable_address(uint8_t address)`
+
+Enables one I2C address.
+
+**Parameters**
+- `address` - I2C address to enable
+
+---
+
+### `void i2c_multi_disable_address(uint8_t address)`
+
+Disables one I2C address.
+
+**Parameters**
+- `address` - I2C address to disable
+
+---
+
+### `void i2c_multi_enable_all_addresses(void)`
+
+Enables all I2C addresses.
+
+---
+
+### `void i2c_multi_disable_all_addresses(void)`
+
+Disables all I2C addresses.
+
+---
+
+### `bool i2c_multi_is_address_enabled(uint8_t address)`
+
+Checks whether an I2C address is enabled.
+
+**Parameters**
+- `address` - I2C address to check
+
+**Returns**
+- `true` if the address is enabled
+- `false` otherwise
+
+---
+
+### `void i2c_multi_fixed_length(int16_t length)`
+
+Releases the bus after the specified number of bytes has been sent.  
+Useful for compatibility with buggy I2C masters.
+
+## Handler callbacks
+
+### `void receive_handler(uint8_t data, bool is_address)`
+
+Called when a byte or address is received.
+
+**Parameters**
+- `data` - received byte or address
+- `is_address` - `true` if `data` is an address, `false` if it is a data byte
+
+---
+
+### `void request_handler(uint8_t address)`
+
+Called when the master requests data.
+
+**Parameters**
+- `address` - I2C address used in the request
+
+---
+
+### `void stop_handler(uint8_t length)`
+
+Called when a STOP condition is detected.
+
+**Parameters**
+- `length` - number of bytes received or sent
+
+## Changelog
+
+### [v1.1](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1)
+
+- Reduced from 32 to 28 PIO instructions
+- Increased speed up to 2 MHz
+- Added `i2c_multi_fixed_length()` to release the bus after a fixed number of bytes
+
+### [v1.0](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.0)
+
+- Initial release
