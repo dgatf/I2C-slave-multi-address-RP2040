@@ -66,15 +66,9 @@ void i2c_multi_set_request_handler(i2c_multi_request_handler_t handler) { reques
 
 void i2c_multi_set_stop_handler(i2c_multi_stop_handler_t handler) { stop_handler = handler; }
 
-void i2c_multi_enable_address(uint8_t address) {
-    address &= 0x7F;
-    i2c_multi->address[address / 32] |= 1 << (address % 32);
-}
+void i2c_multi_enable_address(uint8_t address) { i2c_multi->address[address / 32] |= 1 << (address % 32); }
 
-void i2c_multi_disable_address(uint8_t address) {
-    address &= 0x7F;
-    i2c_multi->address[address / 32] &= ~(1 << (address % 32));
-}
+void i2c_multi_disable_address(uint8_t address) { i2c_multi->address[address / 32] &= ~(1 << (address % 32)); }
 
 void i2c_multi_enable_all_addresses() {
     i2c_multi->address[0] = 0xFFFFFFFF;
@@ -90,10 +84,7 @@ void i2c_multi_disable_all_addresses() {
     i2c_multi->address[3] = 0;
 }
 
-bool i2c_multi_is_address_enabled(uint8_t address) {
-    address &= 0x7F;
-    return i2c_multi->address[address / 32] & (1 << (address % 32));
-}
+bool i2c_multi_is_address_enabled(uint8_t address) { return i2c_multi->address[address / 32] & (1 << (address % 32)); }
 
 void i2c_multi_disable(void) {
     pio_sm_set_enabled(i2c_multi->pio, i2c_multi->sm_read, false);
