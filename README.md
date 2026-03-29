@@ -109,6 +109,18 @@ Sets the write buffer.
 
 ---
 
+### `void i2c_multi_set_write_buffer_size(size_t size)`
+
+Sets the write buffer size for bounds checking. When set, the driver will not read past
+`buffer + size - 1`, preventing out-of-bounds access when a master reads more bytes than
+the buffer contains. Call this after `i2c_multi_set_write_buffer`. A size of `0` (default)
+disables bounds checking for backward compatibility.
+
+**Parameters**
+- `size` - write buffer size in bytes
+
+---
+
 ### `void i2c_multi_disable(void)`
 
 Puts I2C on hold by disabling the PIO state machines.
@@ -196,7 +208,7 @@ Called when the master requests data.
 
 ---
 
-### `void stop_handler(uint8_t length)`
+### `void stop_handler(uint16_t length)`
 
 Called when a STOP condition is detected.
 
