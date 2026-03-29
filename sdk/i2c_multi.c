@@ -20,6 +20,7 @@ static inline uint8_t transpond_byte(uint8_t byte);
 
 void i2c_multi_init(PIO pio, uint pin) {
     i2c_multi = (i2c_multi_t *)malloc(sizeof(i2c_multi_t));
+    if (!i2c_multi) return;
     i2c_multi->pio = pio;
     i2c_multi->status = I2C_IDLE;
     i2c_multi->pin = pin;
@@ -65,9 +66,15 @@ void i2c_multi_set_request_handler(i2c_multi_request_handler_t handler) { reques
 
 void i2c_multi_set_stop_handler(i2c_multi_stop_handler_t handler) { stop_handler = handler; }
 
-void i2c_multi_enable_address(uint8_t address) { i2c_multi->address[address / 32] |= 1 << (address % 32); }
+void i2c_multi_enable_address(uint8_t address) {
+    address &= 0x7F;
+    i2c_multi->address[address / 32] |= 1 << (address % 32);
+}
 
-void i2c_multi_disable_address(uint8_t address) { i2c_multi->address[address / 32] &= ~(1 << (address % 32)); }
+void i2c_multi_disable_address(uint8_t address) {
+    address &= 0x7F;
+    i2c_multi->address[address / 32] &= ~(1 << (address % 32));
+}
 
 void i2c_multi_enable_all_addresses() {
     i2c_multi->address[0] = 0xFFFFFFFF;
@@ -83,7 +90,10 @@ void i2c_multi_disable_all_addresses() {
     i2c_multi->address[3] = 0;
 }
 
-bool i2c_multi_is_address_enabled(uint8_t address) { return i2c_multi->address[address / 32] & (1 << (address % 32)); }
+bool i2c_multi_is_address_enabled(uint8_t address) {
+    address &= 0x7F;
+    return i2c_multi->address[address / 32] & (1 << (address % 32));
+}
 
 void i2c_multi_disable(void) {
     pio_sm_set_enabled(i2c_multi->pio, i2c_multi->sm_read, false);
@@ -264,7 +274,7 @@ static inline void byte_handler_pio(void) {
                        (((uint32_t)wait_ack_program_instructions[5]) << 16) | wait_ack_program_instructions[4]);
             pio_sm_put(i2c_multi->pio, i2c_multi->sm_write,
                        (((uint32_t)wait_ack_program_instructions[7] + i2c_multi->offset_write) << 16) |
-                           (wait_ack_program_instructions[6]) + i2c_multi->offset_write);
+                           wait_ack_program_instructions[6]);
             pio_sm_put(i2c_multi->pio, i2c_multi->sm_write, value);
             pio_sm_put(i2c_multi->pio, i2c_multi->sm_write,
                        (((uint32_t)wait_ack_program_instructions[1]) << 16) | wait_ack_program_instructions[0]);
@@ -280,6 +290,7 @@ static inline void byte_handler_pio(void) {
                 stop_handler(i2c_multi->bytes_count - 1);
             }
             i2c_multi->bytes_count = 0;
+            i2c_multi->buffer = i2c_multi->buffer_start;
             i2c_multi->status = I2C_IDLE;
         }
     }
