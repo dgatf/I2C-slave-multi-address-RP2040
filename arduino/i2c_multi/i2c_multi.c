@@ -119,6 +119,10 @@ void i2c_multi_remove(void) {
     receive_handler = NULL;
     request_handler = NULL;
     stop_handler = NULL;
+    uint pio_irq0 = (i2c_multi->pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0);
+    uint pio_irq1 = (i2c_multi->pio == pio0 ? PIO0_IRQ_1 : PIO1_IRQ_1);
+    irq_set_enabled(pio_irq0, false);
+    irq_set_enabled(pio_irq1, false);
     pio_set_irq0_source_enabled(i2c_multi->pio, pis_interrupt0, false);
     pio_set_irq1_source_enabled(i2c_multi->pio, pis_interrupt1, false);
     pio_clear_instruction_memory(i2c_multi->pio);
@@ -280,6 +284,7 @@ static inline void byte_handler_pio(void) {
                 stop_handler(i2c_multi->bytes_count - 1);
             }
             i2c_multi->bytes_count = 0;
+            i2c_multi->buffer = i2c_multi->buffer_start;
             i2c_multi->status = I2C_IDLE;
         }
     }
