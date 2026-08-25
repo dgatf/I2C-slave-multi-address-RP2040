@@ -25,7 +25,7 @@
 
 .program start_condition  // 5
 do_irq:
-    irq 1 // Ensure a stop has been handled, in case this is a repeat start
+    irq 6 // Flag a START condition for the CPU (internal flag, not a CPU interrupt)
     irq 4
 public start:
 .wrap_target

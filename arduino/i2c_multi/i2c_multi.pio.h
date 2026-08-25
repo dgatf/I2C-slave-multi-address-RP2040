@@ -19,7 +19,7 @@
 #define start_condition_offset_start 2u
 
 static const uint16_t start_condition_program_instructions[] = {
-    0xc001, //  0: irq    nowait 1
+    0xc006, //  0: irq    nowait 6
     0xc004, //  1: irq    nowait 4
             //     .wrap_target
     0x20a0, //  2: wait   1 pin, 0

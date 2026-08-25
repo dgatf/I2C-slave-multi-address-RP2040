@@ -16,6 +16,7 @@ static inline void read_byte_program_init(PIO pio, uint sm, uint offset, uint pi
 static inline void write_byte_program_init(PIO pio, uint sm, uint offset, uint pin);
 static inline void byte_handler_pio(void);
 static inline void stop_handler_pio(void);
+static inline void end_transaction(void);
 static inline uint8_t transpond_byte(uint8_t byte);
 
 void i2c_multi_init(PIO pio, uint pin) {
@@ -192,6 +193,18 @@ static inline void byte_handler_pio(void) {
     uint8_t received = 0;
     bool is_address = false;
     i2c_multi->bytes_count++;
+
+    // Check if this byte follows a START condition (IRQ6 flag set by start_condition program)
+    bool is_start = pio_interrupt_get(i2c_multi->pio, 6);
+    if (is_start) {
+        pio_interrupt_clear(i2c_multi->pio, 6);
+        // If a transaction was in progress, finalize it as a repeated START
+        if (i2c_multi->status != I2C_IDLE) {
+            end_transaction();
+            i2c_multi->bytes_count = 1;  // The current byte is the new address (byte 1 of new transaction)
+        }
+    }
+
     if (i2c_multi->status != I2C_WRITE) {
         received = transpond_byte(pio_sm_get_blocking(i2c_multi->pio, i2c_multi->sm_read) >>
                                   24);  // Do the bit-reverse here as PIO instructions are scarce
@@ -291,10 +304,7 @@ static inline void byte_handler_pio(void) {
     pio_interrupt_clear(i2c_multi->pio, 0);
 }
 
-static inline void stop_handler_pio(void) {
-    pio_interrupt_clear(i2c_multi->pio, 1);
-    if (i2c_multi->status == I2C_IDLE) return;
-    pio_sm_exec(i2c_multi->pio, i2c_multi->sm_read, i2c_multi->offset_read);
+static inline void end_transaction(void) {
     pio_sm_clear_fifos(i2c_multi->pio, i2c_multi->sm_write);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[8]);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[9] + i2c_multi->offset_write);
@@ -302,6 +312,13 @@ static inline void stop_handler_pio(void) {
     if (stop_handler) stop_handler(i2c_multi->bytes_count - 1);
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
+}
+
+static inline void stop_handler_pio(void) {
+    pio_interrupt_clear(i2c_multi->pio, 1);
+    if (i2c_multi->status == I2C_IDLE) return;
+    pio_sm_exec(i2c_multi->pio, i2c_multi->sm_read, i2c_multi->offset_read);
+    end_transaction();
 }
 
 static inline uint8_t transpond_byte(uint8_t byte) {
