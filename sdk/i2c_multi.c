@@ -201,8 +201,8 @@ static inline void byte_handler_pio(void) {
         // If a transaction was in progress, finalize it as a repeated START
         if (i2c_multi->status != I2C_IDLE) {
             end_transaction();
-            i2c_multi->bytes_count = 1;  // The current byte is the new address (byte 1 of new transaction)
         }
+        i2c_multi->bytes_count = 1;  // The current byte is the new address (byte 1 of new transaction)
     }
 
     if (i2c_multi->status != I2C_WRITE) {
