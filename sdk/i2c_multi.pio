@@ -23,10 +23,13 @@
  
  // sda 0, scl 1
 
-.program start_condition  // 5
+.program start_condition  // 7
+.side_set 1 opt pindirs
 do_irq:
-    irq 1 // Ensure a stop has been handled, in case this is a repeat start
-    irq 4
+    wait 0 pin 1
+    set pins, 0 side 1
+    irq wait 1 // start condition
+    irq 4 side 0
 public start:
 .wrap_target
     wait 1 pin 0
@@ -36,7 +39,7 @@ public start:
 
 .program stop_condition  // 4
 do_irq:
-    irq 1
+    irq 1 // stop condition
 public start:
 .wrap_target
     wait 0 pin 0
