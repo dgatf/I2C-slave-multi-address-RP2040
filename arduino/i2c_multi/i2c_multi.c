@@ -1,8 +1,10 @@
 #include "i2c_multi.h"
 
+#include <stdio.h>
+
 #include "hardware/irq.h"
 
-#define CLK_DIV 16
+#define CLK_DIV 1
 
 static i2c_multi_t *i2c_multi;
 
@@ -16,6 +18,7 @@ static inline void read_byte_program_init(PIO pio, uint sm, uint offset, uint pi
 static inline void write_byte_program_init(PIO pio, uint sm, uint offset, uint pin);
 static inline void byte_handler_pio(void);
 static inline void stop_handler_pio(void);
+static inline void end_transaction(void);
 static inline uint8_t transpond_byte(uint8_t byte);
 
 void i2c_multi_init(PIO pio, uint pin) {
@@ -52,6 +55,11 @@ void i2c_multi_init(PIO pio, uint pin) {
     irq_set_enabled(pio_irq0, true);
     irq_set_exclusive_handler(pio_irq1, stop_handler_pio);
     irq_set_enabled(pio_irq1, true);
+
+    pio_interrupt_clear(pio, 0);
+    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);  // irq 0 byte received
+    pio_interrupt_clear(pio, 1);
+    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);  // irq 1 stop condition
 }
 
 void i2c_multi_set_write_buffer(uint8_t *buffer) {
@@ -157,8 +165,6 @@ static inline void stop_condition_program_init(PIO pio, uint sm, uint offset, ui
     sm_config_set_jmp_pin(&c, pin + 1);
     pio_sm_init(pio, sm, offset + stop_condition_offset_start, &c);
     pio_sm_set_enabled(pio, sm, true);
-    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);
-    pio_interrupt_clear(pio, 1);
 }
 
 static inline void read_byte_program_init(PIO pio, uint sm, uint offset, uint pin) {
@@ -166,8 +172,6 @@ static inline void read_byte_program_init(PIO pio, uint sm, uint offset, uint pi
     sm_config_set_in_pins(&c, pin);
     sm_config_set_clkdiv(&c, CLK_DIV);
     sm_config_set_out_shift(&c, true, true, 32);
-    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-    pio_interrupt_clear(pio, 0);
     sm_config_set_set_pins(&c, pin, 2);
     sm_config_set_sideset_pins(&c, pin);
     pio_sm_init(pio, sm, offset, &c);
@@ -291,9 +295,7 @@ static inline void byte_handler_pio(void) {
     pio_interrupt_clear(i2c_multi->pio, 0);
 }
 
-static inline void stop_handler_pio(void) {
-    pio_interrupt_clear(i2c_multi->pio, 1);
-    if (i2c_multi->status == I2C_IDLE) return;
+static inline void end_transaction(void) {
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_read, i2c_multi->offset_read);
     pio_sm_clear_fifos(i2c_multi->pio, i2c_multi->sm_write);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[8]);
@@ -302,6 +304,13 @@ static inline void stop_handler_pio(void) {
     if (stop_handler) stop_handler(i2c_multi->bytes_count - 1);
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
+}
+
+static inline void stop_handler_pio(void) {
+    if (i2c_multi->status != I2C_IDLE) {
+        end_transaction();
+    }
+    pio_interrupt_clear(i2c_multi->pio, 1);
 }
 
 static inline uint8_t transpond_byte(uint8_t byte) {
