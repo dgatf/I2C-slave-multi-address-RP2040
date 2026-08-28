@@ -11,8 +11,14 @@ It is compatible with both the [Pico SDK](https://raspberrypi.github.io/pico-sdk
 - Compatible with Pico SDK and Arduino
 - Optional receive, request, and stop handlers
 - Supports fixed-length transfers for compatibility with buggy I2C masters
-- Up to 2 MHz in v1.1
+- Supports standard I2C speeds up to 1 MHz
 - Uses one full PIO instance
+
+## High-speed operation
+
+The library has been tested beyond standard I2C speeds.
+
+Operation at 2 MHz has been verified, but timing margins become very small, especially with back-to-back transactions and the stop callback enabled. Speeds above 1 MHz should therefore be considered experimental.
 
 ## Usage
 
@@ -203,12 +209,23 @@ Called when a STOP condition is detected.
 **Parameters**
 - `length` - number of bytes received or sent
 
+**Remark**
+
+I2C callbacks run in interrupt context and should be kept short and non-blocking. This is especially critical for the stop callback, since a STOP condition releases the bus and the next transaction may start immediately.
+
+Avoid `printf`, `Serial`, delays, or other slow operations inside the stop callback, particularly with back-to-back transactions. If debug output is required, store the data in the callback and print it later from the main loop.
+
 ## Changelog
+
+### [v1.1.1](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1.1)
+
+- Fixed repeated START support and documented timing considerations for stop callbacks and high-speed/back-to-back transactions.
+- PIO program size increased to 30 instructions
 
 ### [v1.1](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1)
 
 - Reduced from 32 to 28 PIO instructions
-- Increased speed up to 2 MHz
+- Improved high-speed operation
 - Added `i2c_multi_fixed_length()` to release the bus after a fixed number of bytes
 
 ### [v1.0](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.0)

@@ -4,7 +4,7 @@
 
 #include "hardware/irq.h"
 
-#define CLK_DIV 16
+#define CLK_DIV 1
 
 static i2c_multi_t *i2c_multi;
 
