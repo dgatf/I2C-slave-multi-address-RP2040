@@ -17,7 +17,7 @@
  *  Add external pull ups, 1k - 3.3k
  *
  *  Define handlers, write buffer and enable addresses.
- *  Received write transactions are buffered in an internal ring buffer;
+ *  Received write transactions are buffered in an internal ring queue;
  *  use i2c_multi_rx_available() / i2c_multi_rx_read() to dequeue them.
  *
  * -------------------------------------------------------------------------------
@@ -31,7 +31,9 @@
 PIO pio = pio0;
 uint pin = 0;
 uint8_t tx_buffer[64] = {0};
-char buffer[80] = {0};
+/* Receive buffer: sized to the maximum expected single transaction. */
+uint8_t rx_buf[I2C_MULTI_RX_BUFFER_SIZE];
+char print_buf[80] = {0};
 
 void i2c_request_handler(uint8_t address) {
     switch (address) {
@@ -58,12 +60,13 @@ void setup() {
 void loop() {
     i2c_rx_transaction_t rx;
     while (i2c_multi_rx_available()) {
-        i2c_multi_rx_read(&rx);
-        sprintf(buffer, "\nWrite %uB (0x%X): ", rx.length, rx.address);
-        Serial.print(buffer);
-        for (uint8_t i = 0; i < rx.length; i++) {
-            sprintf(buffer, "0x%X ", rx.data[i]);
-            Serial.print(buffer);
+        if (i2c_multi_rx_read(&rx, rx_buf, sizeof(rx_buf))) {
+            sprintf(print_buf, "\nWrite %uB (0x%X): ", rx.length, rx.address);
+            Serial.print(print_buf);
+            for (uint16_t i = 0; i < rx.length; i++) {
+                sprintf(print_buf, "0x%X ", rx.data[i]);
+                Serial.print(print_buf);
+            }
         }
     }
     if (i2c_multi_rx_overflow()) {

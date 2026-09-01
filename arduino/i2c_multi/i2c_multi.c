@@ -9,10 +9,10 @@
 static i2c_multi_t *i2c_multi;
 
 static void (*request_handler)(uint8_t address) = NULL;
-static void (*stop_handler)(uint8_t length) = NULL;
+static void (*stop_handler)(uint16_t length) = NULL;
 
 /* Single static RX queue instance.  The producer is the PIO IRQ handler;
-   the consumer is application code running in the main thread. */
+   the consumer is application code running in the main thread (same core). */
 static i2c_rx_queue_t rx_queue;
 
 static inline void start_condition_program_init(PIO pio, uint sm, uint offset, uint pin);
@@ -33,10 +33,10 @@ void i2c_multi_init(PIO pio, uint pin) {
     i2c_multi_disable_all_addresses();
     i2c_multi->buffer = NULL;
     i2c_multi->buffer_start = NULL;
-    uint pio_irq0 = (pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0);
-    uint pio_irq1 = (pio == pio0 ? PIO0_IRQ_1 : PIO1_IRQ_1);
     i2c_multi->length = -1;
     i2c_rx_queue_init(&rx_queue);
+    uint pio_irq0 = (pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0);
+    uint pio_irq1 = (pio == pio0 ? PIO0_IRQ_1 : PIO1_IRQ_1);
     pio_gpio_init(pio, pin);
     pio_gpio_init(pio, pin + 1);
     i2c_multi->offset_start = pio_add_program(pio, &start_condition_program);
@@ -107,6 +107,7 @@ void i2c_multi_disable(void) {
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
     i2c_multi->buffer = i2c_multi->buffer_start;
+    /* Discard any partial transaction currently being assembled. */
     i2c_rx_queue_abort_current(&rx_queue);
 }
 
@@ -154,7 +155,11 @@ void i2c_multi_fixed_length(int16_t length) { i2c_multi->length = length; }
 
 bool i2c_multi_rx_available(void) { return i2c_rx_queue_available(&rx_queue); }
 
-bool i2c_multi_rx_read(i2c_rx_transaction_t *out) { return i2c_rx_queue_read(&rx_queue, out); }
+bool i2c_multi_rx_read(i2c_rx_transaction_t *out, uint8_t *buf, uint16_t buf_size) {
+    return i2c_rx_queue_read(&rx_queue, out, buf, buf_size);
+}
+
+uint16_t i2c_multi_rx_peek_length(void) { return i2c_rx_queue_peek_length(&rx_queue); }
 
 bool i2c_multi_rx_overflow(void) { return i2c_rx_queue_overflow(&rx_queue); }
 
@@ -315,11 +320,11 @@ static inline void end_transaction(void) {
            The write buffer is not touched here: it belongs exclusively to the
            TX path and is correctly reset when a TX transaction ends (see else
            branch). Resetting it in the RX path would be harmless but misleading. */
-        int16_t len = i2c_rx_queue_end(&rx_queue);
+        int32_t len = i2c_rx_queue_end(&rx_queue);
         /* Call stop_handler only when the transaction was successfully enqueued
            (len >= 0).  Overflow transactions are silently discarded; the user
            can detect them via i2c_multi_rx_overflow(). */
-        if (len >= 0 && stop_handler) stop_handler((uint8_t)len);
+        if (len >= 0 && stop_handler) stop_handler((uint16_t)len);
     } else {
         /* TX (master-read / I2C_WRITE) path: reset write buffer and notify. */
         i2c_multi->buffer = i2c_multi->buffer_start;
