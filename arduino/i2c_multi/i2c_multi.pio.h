@@ -14,17 +14,16 @@
 
 #define start_condition_wrap_target 2
 #define start_condition_wrap 4
-#define start_condition_pio_version 0
 
 #define start_condition_offset_start 2u
 
 static const uint16_t start_condition_program_instructions[] = {
-    0xc001, //  0: irq    nowait 1
-    0xc004, //  1: irq    nowait 4
+    0xc001, //  0: irq    nowait 1                   
+    0xc004, //  1: irq    nowait 4                   
             //     .wrap_target
-    0x20a0, //  2: wait   1 pin, 0
-    0x2020, //  3: wait   0 pin, 0
-    0x00c0, //  4: jmp    pin, 0
+    0x20a0, //  2: wait   1 pin, 0                   
+    0x2020, //  3: wait   0 pin, 0                   
+    0x00c0, //  4: jmp    pin, 0                     
             //     .wrap
 };
 
@@ -33,10 +32,6 @@ static const struct pio_program start_condition_program = {
     .instructions = start_condition_program_instructions,
     .length = 5,
     .origin = -1,
-    .pio_version = start_condition_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config start_condition_program_get_default_config(uint offset) {
@@ -52,16 +47,15 @@ static inline pio_sm_config start_condition_program_get_default_config(uint offs
 
 #define stop_condition_wrap_target 1
 #define stop_condition_wrap 3
-#define stop_condition_pio_version 0
 
 #define stop_condition_offset_start 1u
 
 static const uint16_t stop_condition_program_instructions[] = {
-    0xc001, //  0: irq    nowait 1
+    0xc001, //  0: irq    nowait 1                   
             //     .wrap_target
-    0x2020, //  1: wait   0 pin, 0
-    0x20a0, //  2: wait   1 pin, 0
-    0x00c0, //  3: jmp    pin, 0
+    0x2020, //  1: wait   0 pin, 0                   
+    0x20a0, //  2: wait   1 pin, 0                   
+    0x00c0, //  3: jmp    pin, 0                     
             //     .wrap
 };
 
@@ -70,10 +64,6 @@ static const struct pio_program stop_condition_program = {
     .instructions = stop_condition_program_instructions,
     .length = 4,
     .origin = -1,
-    .pio_version = stop_condition_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config stop_condition_program_get_default_config(uint offset) {
@@ -89,20 +79,19 @@ static inline pio_sm_config stop_condition_program_get_default_config(uint offse
 
 #define read_byte_wrap_target 0
 #define read_byte_wrap 9
-#define read_byte_pio_version 0
 
 static const uint16_t read_byte_program_instructions[] = {
             //     .wrap_target
-    0x20c4, //  0: wait   1 irq, 4
-    0xf027, //  1: set    x, 7            side 0
-    0x2021, //  2: wait   0 pin, 1
-    0x20a1, //  3: wait   1 pin, 1
-    0x4001, //  4: in     pins, 1
-    0x0042, //  5: jmp    x--, 2
-    0x8000, //  6: push   noblock
-    0x60f0, //  7: out    exec, 16
-    0x0007, //  8: jmp    7
-    0xc005, //  9: irq    nowait 5
+    0x20c4, //  0: wait   1 irq, 4                   
+    0xf027, //  1: set    x, 7            side 0     
+    0x2021, //  2: wait   0 pin, 1                   
+    0x20a1, //  3: wait   1 pin, 1                   
+    0x4001, //  4: in     pins, 1                    
+    0x0042, //  5: jmp    x--, 2                     
+    0x8000, //  6: push   noblock                    
+    0x60f0, //  7: out    exec, 16                   
+    0x0007, //  8: jmp    7                          
+    0xc005, //  9: irq    nowait 5                   
             //     .wrap
 };
 
@@ -111,10 +100,6 @@ static const struct pio_program read_byte_program = {
     .instructions = read_byte_program_instructions,
     .length = 10,
     .origin = -1,
-    .pio_version = read_byte_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config read_byte_program_get_default_config(uint offset) {
@@ -131,21 +116,20 @@ static inline pio_sm_config read_byte_program_get_default_config(uint offset) {
 
 #define do_ack_wrap_target 0
 #define do_ack_wrap 10
-#define do_ack_pio_version 0
 
 static const uint16_t do_ack_program_instructions[] = {
             //     .wrap_target
-    0x2021, //  0: wait   0 pin, 1
-    0xfc00, //  1: set    pins, 0         side 3
-    0xa042, //  2: nop
-    0xc020, //  3: irq    wait 0
-    0xf400, //  4: set    pins, 0         side 1
-    0x20a1, //  5: wait   1 pin, 1
-    0x2021, //  6: wait   0 pin, 1
-    0x0001, //  7: jmp    1
-    0x0009, //  8: jmp    9
-    0xe080, //  9: set    pindirs, 0
-    0x0000, // 10: jmp    0
+    0x2021, //  0: wait   0 pin, 1                   
+    0xfc00, //  1: set    pins, 0         side 3     
+    0xa042, //  2: nop                               
+    0xc020, //  3: irq    wait 0                     
+    0xf400, //  4: set    pins, 0         side 1     
+    0x20a1, //  5: wait   1 pin, 1                   
+    0x2021, //  6: wait   0 pin, 1                   
+    0x0001, //  7: jmp    1                          
+    0x0009, //  8: jmp    9                          
+    0xe080, //  9: set    pindirs, 0                 
+    0x0000, // 10: jmp    0                          
             //     .wrap
 };
 
@@ -154,10 +138,6 @@ static const struct pio_program do_ack_program = {
     .instructions = do_ack_program_instructions,
     .length = 11,
     .origin = -1,
-    .pio_version = do_ack_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config do_ack_program_get_default_config(uint offset) {
@@ -174,19 +154,18 @@ static inline pio_sm_config do_ack_program_get_default_config(uint offset) {
 
 #define write_byte_wrap_target 0
 #define write_byte_wrap 8
-#define write_byte_pio_version 0
 
 static const uint16_t write_byte_program_instructions[] = {
             //     .wrap_target
-    0x20c5, //  0: wait   1 irq, 5
-    0xf427, //  1: set    x, 7            side 1
-    0x2021, //  2: wait   0 pin, 1
-    0x6001, //  3: out    pins, 1
-    0x20a1, //  4: wait   1 pin, 1
-    0x0042, //  5: jmp    x--, 2
-    0x6060, //  6: out    null, 32
-    0x60f0, //  7: out    exec, 16
-    0x0007, //  8: jmp    7
+    0x20c5, //  0: wait   1 irq, 5                   
+    0xf427, //  1: set    x, 7            side 1     
+    0x2021, //  2: wait   0 pin, 1                   
+    0x6001, //  3: out    pins, 1                    
+    0x20a1, //  4: wait   1 pin, 1                   
+    0x0042, //  5: jmp    x--, 2                     
+    0x6060, //  6: out    null, 32                   
+    0x60f0, //  7: out    exec, 16                   
+    0x0007, //  8: jmp    7                          
             //     .wrap
 };
 
@@ -195,10 +174,6 @@ static const struct pio_program write_byte_program = {
     .instructions = write_byte_program_instructions,
     .length = 9,
     .origin = -1,
-    .pio_version = write_byte_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config write_byte_program_get_default_config(uint offset) {
@@ -215,20 +190,19 @@ static inline pio_sm_config write_byte_program_get_default_config(uint offset) {
 
 #define wait_ack_wrap_target 0
 #define wait_ack_wrap 9
-#define wait_ack_pio_version 0
 
 static const uint16_t wait_ack_program_instructions[] = {
             //     .wrap_target
-    0x2021, //  0: wait   0 pin, 1
-    0xa042, //  1: nop
-    0xf800, //  2: set    pins, 0         side 2
-    0xc020, //  3: irq    wait 0
-    0xa042, //  4: nop
-    0x30a1, //  5: wait   1 pin, 1        side 0
-    0x00c0, //  6: jmp    pin, 0
-    0x0001, //  7: jmp    1
-    0x7060, //  8: out    null, 32        side 0
-    0x0000, //  9: jmp    0
+    0x2021, //  0: wait   0 pin, 1                   
+    0xa042, //  1: nop                               
+    0xf800, //  2: set    pins, 0         side 2     
+    0xc020, //  3: irq    wait 0                     
+    0xa042, //  4: nop                               
+    0x30a1, //  5: wait   1 pin, 1        side 0     
+    0x00c0, //  6: jmp    pin, 0                     
+    0x0001, //  7: jmp    1                          
+    0x7060, //  8: out    null, 32        side 0     
+    0x0000, //  9: jmp    0                          
             //     .wrap
 };
 
@@ -237,10 +211,6 @@ static const struct pio_program wait_ack_program = {
     .instructions = wait_ack_program_instructions,
     .length = 10,
     .origin = -1,
-    .pio_version = wait_ack_pio_version,
-#if PICO_PIO_VERSION > 0
-    .used_gpio_ranges = 0x0
-#endif
 };
 
 static inline pio_sm_config wait_ack_program_get_default_config(uint offset) {

@@ -28,46 +28,37 @@
 
 PIO pio = pio0;
 uint pin = 0;
-uint8_t tx_buffer[64] = {0};
-uint8_t rx_buffer[64] = {0};
+uint8_t write_buffer[64] = {0};
+uint8_t read_buffer[64] = {0};
 static volatile bool stop_pending = false;
 static volatile uint8_t stop_bytes = 0;
 static volatile uint8_t address = 0;
-static volatile uint index = 0;
 static volatile bool is_read = false;
 
 // I2C handlers run in interrupt context.
 // Keep them short and non-blocking. Avoid printf/Serial, delays,
 // or other slow operations.
 
-void i2c_receive_handler(uint8_t data, bool is_address) {
-    if (is_address) {
-        address = data;
-        index = 0;
-        is_read = false;
-    } else {
-        is_read = true;
-        rx_buffer[index++] = data;
-    }
-}
 
 void i2c_request_handler(uint8_t address) {
     is_read = false;
     switch (address) {
         case 0x70:
-            tx_buffer[0] = 0x10;
-            tx_buffer[1] = 0x11;
-            tx_buffer[2] = 0x12;
+            write_buffer[0] = 0x10;
+            write_buffer[1] = 0x11;
+            write_buffer[2] = 0x12;
             break;
         case 0x71:
-            sprintf((char *)tx_buffer, "Hello, I'm %X", address);
+            sprintf((char *)write_buffer, "Hello, I'm %X", address);
             break;
     }
 }
 
-void i2c_stop_handler(uint8_t length) {
+void i2c_stop_handler(uint8_t addr, bool is_rd, uint length) {
     stop_bytes = length;
     stop_pending = true;
+    address = addr;
+    is_read = is_rd;
 }
 
 int main() {
@@ -75,10 +66,10 @@ int main() {
     i2c_multi_init(pio, pin);
     i2c_multi_enable_address(0x70);
     i2c_multi_enable_address(0x71);
-    i2c_multi_set_receive_handler(i2c_receive_handler);
     i2c_multi_set_request_handler(i2c_request_handler);
     i2c_multi_set_stop_handler(i2c_stop_handler);
-    i2c_multi_set_write_buffer(tx_buffer);
+    i2c_multi_set_write_buffer(write_buffer);
+    i2c_multi_set_read_buffer(read_buffer);
 
     while (true) {
         if (stop_pending) {
@@ -86,7 +77,7 @@ int main() {
             stop_pending = false;
             printf("\n%s %uB (0x%X): ", is_read ? "Read" : "Write", bytes, address);
             for (uint8_t i = 0; i < bytes; i++) {
-                printf("0x%X ", rx_buffer[i]);
+                printf("0x%X ", is_read ? read_buffer[i] : write_buffer[i]);
             }
         }
         tight_loop_contents();
