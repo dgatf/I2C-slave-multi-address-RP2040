@@ -8,9 +8,12 @@
 
 static i2c_multi_t *i2c_multi;
 
-static void (*receive_handler)(uint8_t data, bool is_address) = NULL;
 static void (*request_handler)(uint8_t address) = NULL;
 static void (*stop_handler)(uint8_t length) = NULL;
+
+/* Single static RX queue instance.  The producer is the PIO IRQ handler;
+   the consumer is application code running in the main thread. */
+static i2c_rx_queue_t rx_queue;
 
 static inline void start_condition_program_init(PIO pio, uint sm, uint offset, uint pin);
 static inline void stop_condition_program_init(PIO pio, uint sm, uint offset, uint pin);
@@ -33,6 +36,7 @@ void i2c_multi_init(PIO pio, uint pin) {
     uint pio_irq0 = (pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0);
     uint pio_irq1 = (pio == pio0 ? PIO0_IRQ_1 : PIO1_IRQ_1);
     i2c_multi->length = -1;
+    i2c_rx_queue_init(&rx_queue);
     pio_gpio_init(pio, pin);
     pio_gpio_init(pio, pin + 1);
     i2c_multi->offset_start = pio_add_program(pio, &start_condition_program);
@@ -67,8 +71,6 @@ void i2c_multi_set_write_buffer(uint8_t *buffer) {
     i2c_multi->buffer_start = buffer;
 }
 
-void i2c_multi_set_receive_handler(i2c_multi_receive_handler_t handler) { receive_handler = handler; }
-
 void i2c_multi_set_request_handler(i2c_multi_request_handler_t handler) { request_handler = handler; }
 
 void i2c_multi_set_stop_handler(i2c_multi_stop_handler_t handler) { stop_handler = handler; }
@@ -77,14 +79,14 @@ void i2c_multi_enable_address(uint8_t address) { i2c_multi->address[address / 32
 
 void i2c_multi_disable_address(uint8_t address) { i2c_multi->address[address / 32] &= ~(1 << (address % 32)); }
 
-void i2c_multi_enable_all_addresses() {
+void i2c_multi_enable_all_addresses(void) {
     i2c_multi->address[0] = 0xFFFFFFFF;
     i2c_multi->address[1] = 0xFFFFFFFF;
     i2c_multi->address[2] = 0xFFFFFFFF;
     i2c_multi->address[3] = 0xFFFFFFFF;
 }
 
-void i2c_multi_disable_all_addresses() {
+void i2c_multi_disable_all_addresses(void) {
     i2c_multi->address[0] = 0;
     i2c_multi->address[1] = 0;
     i2c_multi->address[2] = 0;
@@ -105,6 +107,7 @@ void i2c_multi_disable(void) {
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
     i2c_multi->buffer = i2c_multi->buffer_start;
+    i2c_rx_queue_abort_current(&rx_queue);
 }
 
 void i2c_multi_restart(void) {
@@ -124,7 +127,6 @@ void i2c_multi_restart(void) {
 }
 
 void i2c_multi_remove(void) {
-    receive_handler = NULL;
     request_handler = NULL;
     stop_handler = NULL;
     uint pio_irq0 = (i2c_multi->pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0);
@@ -144,10 +146,17 @@ void i2c_multi_remove(void) {
     i2c_multi->status = I2C_IDLE;
     gpio_set_input_enabled(i2c_multi->pin, true);
     gpio_set_input_enabled(i2c_multi->pin + 1, true);
+    i2c_rx_queue_init(&rx_queue);
     free(i2c_multi);
 }
 
 void i2c_multi_fixed_length(int16_t length) { i2c_multi->length = length; }
+
+bool i2c_multi_rx_available(void) { return i2c_rx_queue_available(&rx_queue); }
+
+bool i2c_multi_rx_read(i2c_rx_transaction_t *out) { return i2c_rx_queue_read(&rx_queue, out); }
+
+bool i2c_multi_rx_overflow(void) { return i2c_rx_queue_overflow(&rx_queue); }
 
 static inline void start_condition_program_init(PIO pio, uint sm, uint offset, uint pin) {
     pio_sm_config c = start_condition_program_get_default_config(offset);
@@ -231,11 +240,10 @@ static inline void byte_handler_pio(void) {
                    (((uint32_t)do_ack_program_instructions[1]) << 16) | do_ack_program_instructions[0]);
         pio_sm_put(i2c_multi->pio, i2c_multi->sm_read,
                    (((uint32_t)do_ack_program_instructions[3]) << 16) | do_ack_program_instructions[2]);
-        if (receive_handler) {
-            if (is_address) {
-                receive_handler(received >> 1, true);
-            } else
-                receive_handler(received, false);
+        if (is_address) {
+            i2c_rx_queue_begin(&rx_queue, received >> 1);
+        } else {
+            i2c_rx_queue_append(&rx_queue, received);
         }
     }
     if (i2c_multi->status == I2C_WRITE && is_address) {
@@ -300,8 +308,18 @@ static inline void end_transaction(void) {
     pio_sm_clear_fifos(i2c_multi->pio, i2c_multi->sm_write);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[8]);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[9] + i2c_multi->offset_write);
-    i2c_multi->buffer = i2c_multi->buffer_start;
-    if (stop_handler) stop_handler(i2c_multi->bytes_count - 1);
+    if (i2c_multi->status == I2C_READ) {
+        /* Close the current RX slot and publish it to the consumer. */
+        int16_t len = i2c_rx_queue_end(&rx_queue);
+        /* Call stop_handler only when the transaction was successfully enqueued
+           (len >= 0).  Overflow transactions are silently discarded; the user
+           can detect them via i2c_multi_rx_overflow(). */
+        if (len >= 0 && stop_handler) stop_handler((uint8_t)len);
+    } else {
+        /* TX (master-read) path: reset write buffer and notify. */
+        i2c_multi->buffer = i2c_multi->buffer_start;
+        if (stop_handler) stop_handler(i2c_multi->bytes_count - 1);
+    }
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
 }
