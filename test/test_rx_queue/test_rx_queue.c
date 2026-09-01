@@ -125,11 +125,7 @@ static void test_2_back_to_back(void) {
 
 static void test_3_different_sizes_payload_proportional(void) {
     printf("Test 3: transactions of very different sizes (100, 1, 2, 1 bytes)\n");
-    /* For this test we need a bigger ring to hold 104 bytes. */
-#define RING3 256u
-#define DEPTH3 8u
-    /* We cannot change the macros mid-file, so use the global queue with
-       BUFFER_SIZE=128 which can hold 100+1+2+1=104 bytes comfortably. */
+    /* Use the global queue with BUFFER_SIZE=128 which can hold 104 bytes. */
     i2c_rx_queue_t q;
     i2c_rx_queue_init(&q);
 
@@ -166,8 +162,6 @@ static void test_3_different_sizes_payload_proportional(void) {
     CHECK(rx.length == 1 && rx.data[0] == 0xDD);
 
     CHECK(!i2c_rx_queue_available(&q));
-#undef RING3
-#undef DEPTH3
 }
 
 /* ── Test 4: descriptor size — no embedded data[] per descriptor ─────────── */
