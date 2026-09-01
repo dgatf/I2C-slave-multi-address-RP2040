@@ -22,14 +22,14 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "i2c_multi.h"
 #include "pico/stdlib.h"
 
 PIO pio = pio0;
 uint pin = 0;
-uint8_t write_buffer[64] = {0};
-uint8_t read_buffer[64] = {0};
+uint8_t buffer[64] = {0};
 static volatile bool stop_pending = false;
 static volatile uint8_t stop_bytes = 0;
 static volatile uint8_t address = 0;
@@ -39,17 +39,20 @@ static volatile bool is_read = false;
 // Keep them short and non-blocking. Avoid printf/Serial, delays,
 // or other slow operations.
 
-
 void i2c_request_handler(uint8_t address) {
     is_read = false;
+    uint8_t *i2c_buffer = i2c_multi_get_buffer();
     switch (address) {
         case 0x70:
-            write_buffer[0] = 0x10;
-            write_buffer[1] = 0x11;
-            write_buffer[2] = 0x12;
+            buffer[0] = 0x10;
+            buffer[1] = 0x11;
+            buffer[2] = 0x12;
+            buffer[3] = 0x13;
+            memcpy(i2c_buffer, buffer, 4);
             break;
         case 0x71:
-            sprintf((char *)write_buffer, "Hello, I'm %X", address);
+            sprintf((char *)buffer, "Hello, I'm %X", address);
+            memcpy(i2c_buffer, buffer, strlen((char *)buffer) + 1);
             break;
     }
 }
@@ -59,6 +62,7 @@ void i2c_stop_handler(uint8_t addr, bool is_rd, uint length) {
     stop_pending = true;
     address = addr;
     is_read = is_rd;
+    memcpy(buffer, i2c_multi_get_buffer(), length);
 }
 
 int main() {
@@ -68,16 +72,15 @@ int main() {
     i2c_multi_enable_address(0x71);
     i2c_multi_set_request_handler(i2c_request_handler);
     i2c_multi_set_stop_handler(i2c_stop_handler);
-    i2c_multi_set_write_buffer(write_buffer);
-    i2c_multi_set_read_buffer(read_buffer);
 
     while (true) {
         if (stop_pending) {
-            uint8_t bytes = stop_bytes;
             stop_pending = false;
-            printf("\n%s %uB (0x%X): ", is_read ? "Read" : "Write", bytes, address);
+            bool read = is_read;
+            uint8_t bytes = stop_bytes;
+            printf("\n%s %uB (0x%X): ", read ? "Read" : "Write", bytes, address);
             for (uint8_t i = 0; i < bytes; i++) {
-                printf("0x%X ", is_read ? read_buffer[i] : write_buffer[i]);
+                printf("0x%X ", buffer[i]);
             }
         }
         tight_loop_contents();

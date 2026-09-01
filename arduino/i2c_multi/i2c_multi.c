@@ -5,9 +5,10 @@
 #include "hardware/irq.h"
 
 #define CLK_DIV 1
+#define BUFFER_SIZE 256
 
 static i2c_multi_t *i2c_multi;
-
+static uint8_t buffer[BUFFER_SIZE] = {0};
 static void (*request_handler)(uint8_t address) = NULL;
 static void (*stop_handler)(uint8_t address, bool is_read, uint length) = NULL;
 
@@ -27,10 +28,6 @@ void i2c_multi_init(PIO pio, uint pin) {
     i2c_multi->pin = pin;
     i2c_multi->bytes_count = 0;
     i2c_multi_disable_all_addresses();
-    i2c_multi->write_buffer = NULL;
-    i2c_multi->write_buffer_start = NULL;
-    i2c_multi->read_buffer = NULL;
-    i2c_multi->read_buffer_start = NULL;
     uint pio_irq0 = (pio == pio0 ? PIO0_IRQ_0 : PIO1_IRQ_0);
     uint pio_irq1 = (pio == pio0 ? PIO0_IRQ_1 : PIO1_IRQ_1);
     i2c_multi->length = -1;
@@ -63,15 +60,7 @@ void i2c_multi_init(PIO pio, uint pin) {
     pio_set_irq1_source_enabled(pio, pis_interrupt1, true);  // irq 1 stop condition
 }
 
-void i2c_multi_set_write_buffer(uint8_t *buffer) {
-    i2c_multi->write_buffer = buffer;
-    i2c_multi->write_buffer_start = buffer;
-}
-
-void i2c_multi_set_read_buffer(uint8_t *buffer) {
-    i2c_multi->read_buffer = buffer;
-    i2c_multi->read_buffer_start = buffer;
-}
+uint8_t *i2c_multi_get_buffer(void) { return buffer; }
 
 void i2c_multi_set_request_handler(i2c_multi_request_handler_t handler) { request_handler = handler; }
 
@@ -108,8 +97,6 @@ void i2c_multi_disable(void) {
     gpio_set_input_enabled(i2c_multi->pin + 1, true);
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
-    i2c_multi->write_buffer = i2c_multi->write_buffer_start;
-    i2c_multi->read_buffer = i2c_multi->read_buffer_start;
 }
 
 void i2c_multi_restart(void) {
@@ -142,10 +129,6 @@ void i2c_multi_remove(void) {
     pio_sm_unclaim(i2c_multi->pio, i2c_multi->sm_stop);
     pio_sm_unclaim(i2c_multi->pio, i2c_multi->sm_read);
     pio_sm_unclaim(i2c_multi->pio, i2c_multi->sm_write);
-    i2c_multi->write_buffer = NULL;
-    i2c_multi->write_buffer_start = NULL;
-    i2c_multi->read_buffer = NULL;
-    i2c_multi->read_buffer_start = NULL;
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
     gpio_set_input_enabled(i2c_multi->pin, true);
@@ -201,7 +184,6 @@ static inline void write_byte_program_init(PIO pio, uint sm, uint offset, uint p
 static inline void byte_handler_pio(void) {
     uint8_t received = 0;
     bool is_address = false;
-    i2c_multi->bytes_count++;
     if (i2c_multi->status != I2C_WRITE) {
         received = transpond_byte(pio_sm_get_blocking(i2c_multi->pio, i2c_multi->sm_read) >>
                                   24);  // Do the bit-reverse here as PIO instructions are scarce
@@ -240,17 +222,17 @@ static inline void byte_handler_pio(void) {
                    (((uint32_t)do_ack_program_instructions[1]) << 16) | do_ack_program_instructions[0]);
         pio_sm_put(i2c_multi->pio, i2c_multi->sm_read,
                    (((uint32_t)do_ack_program_instructions[3]) << 16) | do_ack_program_instructions[2]);
-        if (i2c_multi->read_buffer && !is_address) {
-            *i2c_multi->read_buffer = received;
-            i2c_multi->read_buffer++;
+        if (!is_address && i2c_multi->bytes_count < BUFFER_SIZE) {
+            buffer[i2c_multi->bytes_count] = received;
+            i2c_multi->bytes_count++;
         }
     }
     if (i2c_multi->status == I2C_WRITE && is_address) {
         if (request_handler) request_handler(received >> 1);
         uint8_t value = 0;
-        if (i2c_multi->write_buffer) {
-            value = transpond_byte(*i2c_multi->write_buffer);
-            i2c_multi->write_buffer++;
+        if (i2c_multi->bytes_count < BUFFER_SIZE) {
+            value = transpond_byte(buffer[i2c_multi->bytes_count]);
+            i2c_multi->bytes_count++;
         }
         pio_sm_put(i2c_multi->pio, i2c_multi->sm_read,
                    (((uint32_t)do_ack_program_instructions[5]) << 16) | do_ack_program_instructions[4]);
@@ -269,11 +251,11 @@ static inline void byte_handler_pio(void) {
                    (((uint32_t)wait_ack_program_instructions[3]) << 16) | wait_ack_program_instructions[2]);
     }
     if (i2c_multi->status == I2C_WRITE && !is_address) {
-        if (i2c_multi->length == -1 || (i2c_multi->length > 0 && i2c_multi->bytes_count < i2c_multi->length + 1)) {
+        if (i2c_multi->length == -1 || (i2c_multi->length > 0 && i2c_multi->bytes_count < i2c_multi->length)) {
             uint8_t value = 0;
-            if (i2c_multi->write_buffer) {
-                value = transpond_byte(*i2c_multi->write_buffer);
-                i2c_multi->write_buffer++;
+            if (i2c_multi->bytes_count < BUFFER_SIZE) {
+                value = transpond_byte(buffer[i2c_multi->bytes_count]);
+                i2c_multi->bytes_count++;
             }
             pio_sm_put(i2c_multi->pio, i2c_multi->sm_write,
                        (((uint32_t)wait_ack_program_instructions[5]) << 16) | wait_ack_program_instructions[4]);
@@ -297,9 +279,8 @@ static inline void end_transaction(void) {
     pio_sm_clear_fifos(i2c_multi->pio, i2c_multi->sm_write);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[8]);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[9] + i2c_multi->offset_write);
-    i2c_multi->write_buffer = i2c_multi->write_buffer_start;
-    i2c_multi->read_buffer = i2c_multi->read_buffer_start;
-    if (stop_handler) stop_handler(i2c_multi->address, i2c_multi->is_read, i2c_multi->bytes_count - 1);
+    if (!i2c_multi->is_read && i2c_multi->bytes_count > 0) i2c_multi->bytes_count--;
+    if (stop_handler) stop_handler(i2c_multi->address, i2c_multi->is_read, i2c_multi->bytes_count);
     i2c_multi->bytes_count = 0;
     i2c_multi->status = I2C_IDLE;
 }
