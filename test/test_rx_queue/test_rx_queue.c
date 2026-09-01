@@ -236,7 +236,7 @@ static void test_7_overflow(void) {
     data[0] = 0xFF;
     irq_send(&q, 0x71, data, 1);
     CHECK(i2c_rx_queue_overflow(&q));
-    /* Flag cleared by the read above */
+    /* Flag cleared by the previous overflow check */
     CHECK(!i2c_rx_queue_overflow(&q));
 
     /* The DEPTH slots already in the queue are intact */

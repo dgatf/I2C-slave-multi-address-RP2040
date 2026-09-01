@@ -308,15 +308,20 @@ static inline void end_transaction(void) {
     pio_sm_clear_fifos(i2c_multi->pio, i2c_multi->sm_write);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[8]);
     pio_sm_exec(i2c_multi->pio, i2c_multi->sm_write, wait_ack_program_instructions[9] + i2c_multi->offset_write);
+    /* end_transaction is only called from stop_handler_pio when status != IDLE,
+       so status is either I2C_READ or I2C_WRITE here. */
     if (i2c_multi->status == I2C_READ) {
-        /* Close the current RX slot and publish it to the consumer. */
+        /* Close the current RX slot and publish it to the consumer.
+           The write buffer is not touched here: it belongs exclusively to the
+           TX path and is correctly reset when a TX transaction ends (see else
+           branch). Resetting it in the RX path would be harmless but misleading. */
         int16_t len = i2c_rx_queue_end(&rx_queue);
         /* Call stop_handler only when the transaction was successfully enqueued
            (len >= 0).  Overflow transactions are silently discarded; the user
            can detect them via i2c_multi_rx_overflow(). */
         if (len >= 0 && stop_handler) stop_handler((uint8_t)len);
     } else {
-        /* TX (master-read) path: reset write buffer and notify. */
+        /* TX (master-read / I2C_WRITE) path: reset write buffer and notify. */
         i2c_multi->buffer = i2c_multi->buffer_start;
         if (stop_handler) stop_handler(i2c_multi->bytes_count - 1);
     }
