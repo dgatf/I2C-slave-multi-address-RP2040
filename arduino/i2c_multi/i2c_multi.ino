@@ -16,7 +16,9 @@
  *
  *  Add external pull ups, 1k - 3.3k
  *
- *  Define handlers, write buffer and enable addresses
+ *  Define handlers, write buffer and enable addresses.
+ *  Received write transactions are buffered in an internal ring queue;
+ *  use i2c_multi_rx_available() / i2c_multi_rx_read() to dequeue them.
  *
  * -------------------------------------------------------------------------------
  */
@@ -29,31 +31,11 @@
 PIO pio = pio0;
 uint pin = 0;
 uint8_t tx_buffer[64] = {0};
-uint8_t rx_buffer[64] = {0};
-char buffer[64] = {0};
-static volatile bool stop_pending = false;
-static volatile uint8_t stop_bytes = 0;
-static volatile uint8_t address = 0;
-static volatile uint rx_index = 0;
-static volatile bool is_read = false;
-
-// I2C handlers run in interrupt context.
-// Keep them short and non-blocking. Avoid printf/Serial, delays,
-// or other slow operations.
-
-void i2c_receive_handler(uint8_t data, bool is_address) {
-    if (is_address) {
-        address = data;
-        rx_index = 0;
-        is_read = false;
-    } else {
-        is_read = true;
-        rx_buffer[rx_index++] = data;
-    }
-}
+/* Receive buffer: sized to the maximum expected single transaction. */
+uint8_t rx_buf[I2C_MULTI_RX_BUFFER_SIZE];
+char print_buf[80] = {0};
 
 void i2c_request_handler(uint8_t address) {
-    is_read = false;
     switch (address) {
         case 0x70:
             tx_buffer[0] = 0x10;
@@ -66,31 +48,28 @@ void i2c_request_handler(uint8_t address) {
     }
 }
 
-void i2c_stop_handler(uint8_t length) {
-    stop_bytes = length;
-    stop_pending = true;
-}
-
 void setup() {
     Serial.begin(115200);
     i2c_multi_init(pio, pin);
     i2c_multi_enable_address(0x70);
     i2c_multi_enable_address(0x71);
-    i2c_multi_set_receive_handler(i2c_receive_handler);
     i2c_multi_set_request_handler(i2c_request_handler);
-    i2c_multi_set_stop_handler(i2c_stop_handler);
     i2c_multi_set_write_buffer(tx_buffer);
 }
 
 void loop() {
-    if (stop_pending) {
-        uint8_t bytes = stop_bytes;
-        stop_pending = false;
-        sprintf(buffer, "\n%s %uB (0x%X): ", is_read ? "Read" : "Write", bytes, address);
-        Serial.print(buffer);
-        for (uint8_t i = 0; i < bytes; i++) {
-            sprintf(buffer, "0x%X ", is_read ? rx_buffer[i] : tx_buffer[i]);
-            Serial.print(buffer);
+    i2c_rx_transaction_t rx;
+    while (i2c_multi_rx_available()) {
+        if (i2c_multi_rx_read(&rx, rx_buf, sizeof(rx_buf))) {
+            sprintf(print_buf, "\nWrite %uB (0x%X): ", rx.length, rx.address);
+            Serial.print(print_buf);
+            for (uint16_t i = 0; i < rx.length; i++) {
+                sprintf(print_buf, "0x%X ", rx.data[i]);
+                Serial.print(print_buf);
+            }
         }
+    }
+    if (i2c_multi_rx_overflow()) {
+        Serial.println("\n[WARNING] RX queue overflow: at least one transaction was dropped");
     }
 }
