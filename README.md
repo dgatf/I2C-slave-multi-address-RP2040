@@ -8,8 +8,9 @@ It is compatible with both the [Pico SDK](https://raspberrypi.github.io/pico-sdk
 
 - I2C slave implemented in PIO
 - Supports multiple I2C addresses
-- Compatible with Pico SDK and Arduino
-- Optional receive, request, and stop handlers
+- Compatible with Pico SDK and Arduino-Pico
+- Separate read and write buffers
+- Optional request and stop handlers
 - Supports fixed-length transfers for compatibility with buggy I2C masters
 - Supports standard I2C speeds up to 1 MHz
 - Uses one full PIO instance
@@ -51,13 +52,53 @@ Add the following files to your project:
 
 ### Basic setup
 
-- Define the receive, request, and stop handlers if needed
-- Set the write buffer pointer
+- Define the request and stop handlers if needed
+- Set the write buffer used for data sent by the slave
+- Set the read buffer used for data received by the slave
 - Enable the I2C addresses you want to use for communication
+
+Example:
+
+```c
+uint8_t write_buffer[64];
+uint8_t read_buffer[64];
+
+i2c_multi_init(pio0, 0);
+
+i2c_multi_set_write_buffer(write_buffer);
+i2c_multi_set_read_buffer(read_buffer);
+
+i2c_multi_set_request_handler(request_handler);
+i2c_multi_set_stop_handler(stop_handler);
+
+i2c_multi_enable_address(0x70);
+i2c_multi_enable_address(0x71);
+```
+
+## Buffer operation
+
+The library uses separate buffers for each transfer direction.
+
+### Write buffer
+
+The write buffer contains data that the slave sends to the master.
+
+When the master starts a read transaction, the request handler is called before the first byte is transmitted. The application can use this callback to prepare the contents of the write buffer.
+
+### Read buffer
+
+The read buffer stores data received from the master.
+
+Received bytes are written sequentially into the buffer. The I2C address byte is not stored in the buffer.
+
+When the transaction ends, the stop handler can be used to determine the address, transfer direction, and number of bytes transferred.
+
+Both buffer pointers are automatically reset to the beginning of their respective buffers at the end of each transaction.
 
 ## Hardware notes
 
-**Use pull-up resistors from 1 kΩ to 3.3 kΩ.**  
+**Use pull-up resistors from 1 kΩ to 3.3 kΩ.**
+
 Use lower resistor values for higher bus speeds.
 
 See [sdk/main.c](sdk/main.c) for a usage example.
@@ -69,49 +110,58 @@ See [sdk/main.c](sdk/main.c) for a usage example.
 
 ## API reference
 
-### `void i2c_multi_init(pio, pin)`
+### `void i2c_multi_init(PIO pio, uint pin)`
 
 Must be called first.
 
 **Parameters**
+
 - `pio` - PIO instance where the program will be loaded (`pio0` or `pio1`)
 - `pin` - SDA pin number; SCL is assigned to `pin + 1`
 
 ---
 
-### `void i2c_multi_set_receive_handler(i2c_receive_handler_t i2c_receive_handler)`
-
-Sets the receive handler.
-
-**Parameters**
-- `i2c_receive_handler` - function called when data or an address is received
-
----
-
-### `void i2c_multi_set_request_handler(i2c_request_handler_t i2c_request_handler)`
+### `void i2c_multi_set_request_handler(i2c_multi_request_handler_t handler)`
 
 Sets the request handler.
 
+The handler is called when the master starts a read transaction.
+
 **Parameters**
-- `i2c_request_handler` - function called when the master requests data
+
+- `handler` - function called when the master requests data
 
 ---
 
-### `void i2c_multi_set_stop_handler(i2c_stop_handler_t i2c_stop_handler)`
+### `void i2c_multi_set_stop_handler(i2c_multi_stop_handler_t handler)`
 
 Sets the stop handler.
 
+The handler is called when the current transaction ends.
+
 **Parameters**
-- `i2c_stop_handler` - function called when a STOP condition is detected
+
+- `handler` - transaction completion callback
 
 ---
 
-### `void i2c_multi_set_write_buffer(uint8_t \*buffer)`
+### `void i2c_multi_set_write_buffer(uint8_t *buffer)`
 
-Sets the write buffer.
+Sets the buffer used for data sent from the slave to the master.
 
 **Parameters**
+
 - `buffer` - write buffer
+
+---
+
+### `void i2c_multi_set_read_buffer(uint8_t *buffer)`
+
+Sets the buffer used for data received from the master.
+
+**Parameters**
+
+- `buffer` - read buffer
 
 ---
 
@@ -123,13 +173,13 @@ Puts I2C on hold by disabling the PIO state machines.
 
 ### `void i2c_multi_restart(void)`
 
-Restarts the PIO state machines and resets the byte counter.
+Restarts the PIO state machines and resets the internal state.
 
 ---
 
 ### `void i2c_multi_remove(void)`
 
-Removes the PIO state machines and clears handlers, write buffer, and byte counter.
+Removes the PIO state machines and clears handlers, buffers, and internal state.
 
 ---
 
@@ -138,6 +188,7 @@ Removes the PIO state machines and clears handlers, write buffer, and byte count
 Enables one I2C address.
 
 **Parameters**
+
 - `address` - I2C address to enable
 
 ---
@@ -147,6 +198,7 @@ Enables one I2C address.
 Disables one I2C address.
 
 **Parameters**
+
 - `address` - I2C address to disable
 
 ---
@@ -168,9 +220,11 @@ Disables all I2C addresses.
 Checks whether an I2C address is enabled.
 
 **Parameters**
+
 - `address` - I2C address to check
 
 **Returns**
+
 - `true` if the address is enabled
 - `false` otherwise
 
@@ -178,42 +232,45 @@ Checks whether an I2C address is enabled.
 
 ### `void i2c_multi_fixed_length(int16_t length)`
 
-Releases the bus after the specified number of bytes has been sent.  
+Releases the bus after the specified number of bytes has been sent.
+
 Useful for compatibility with buggy I2C masters.
 
 ## Handler callbacks
 
 I2C callbacks run in interrupt context and should be kept short and non-blocking.
 
-Avoid `printf`, `Serial`, delays, or other slow operations inside the callbacks, particularly with back-to-back transactions. 
-
-### `void receive_handler(uint8_t data, bool is_address)`
-
-Called when a byte or address is received.
-
-**Parameters**
-- `data` - received byte or address
-- `is_address` - `true` if `data` is an address, `false` if it is a data byte
-
----
+Avoid `printf`, `Serial`, delays, or other slow operations inside callbacks, particularly with back-to-back transactions.
 
 ### `void request_handler(uint8_t address)`
 
-Called when the master requests data.
+Called when the master starts a read transaction.
+
+This callback can be used to prepare the write buffer before transmission begins.
 
 **Parameters**
+
 - `address` - I2C address used in the request
 
 ---
 
-### `void stop_handler(uint8_t length)`
+### `void stop_handler(uint8_t address, bool is_read, uint length)`
 
-Called when a STOP condition is detected.
+Called when the current I2C transaction ends.
 
 **Parameters**
-- `length` - number of bytes received or sent
+
+- `address` - I2C slave address used for the transaction
+- `is_read` - `true` when the slave received data from the master, `false` when the slave sent data to the master
+- `length` - number of data bytes received or sent, excluding the address byte
 
 ## Changelog
+
+### [v2](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1.1)
+
+- Replaced the per-byte receive callback with a read buffer
+- Added separate read and write buffers
+- Extended the stop callback to report the address, transfer direction, and number of bytes transferred
 
 ### [v1.1.1](https://github.com/dgatf/I2C-slave-multi-address-RP2040/releases/tag/v1.1.1)
 
