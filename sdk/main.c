@@ -29,7 +29,8 @@
 
 PIO pio = pio0;
 uint pin = 0;
-uint8_t buffer[64] = {0};
+uint8_t read_buffer[64] = {0};
+uint8_t write_buffer[64] = {0};
 static volatile bool stop_pending = false;
 static volatile uint8_t stop_bytes = 0;
 static volatile uint8_t address = 0;
@@ -41,18 +42,15 @@ static volatile bool is_read = false;
 
 void i2c_request_handler(uint8_t address) {
     is_read = false;
-    uint8_t *i2c_buffer = i2c_multi_get_buffer();
     switch (address) {
         case 0x70:
-            buffer[0] = 0x10;
-            buffer[1] = 0x11;
-            buffer[2] = 0x12;
-            buffer[3] = 0x13;
-            memcpy(i2c_buffer, buffer, 4);
+            write_buffer[0] = 0x10;
+            write_buffer[1] = 0x11;
+            write_buffer[2] = 0x12;
+            write_buffer[3] = 0x13;
             break;
         case 0x71:
-            sprintf((char *)buffer, "Hello, I'm %X", address);
-            memcpy(i2c_buffer, buffer, strlen((char *)buffer) + 1);
+            sprintf((char *)write_buffer, "Hello, I'm %X", address);
             break;
     }
 }
@@ -62,7 +60,7 @@ void i2c_stop_handler(uint8_t addr, bool is_rd, uint length) {
     stop_pending = true;
     address = addr;
     is_read = is_rd;
-    memcpy(buffer, i2c_multi_get_buffer(), length);
+    if (is_read) memcpy(read_buffer, i2c_multi_get_buffer(), length);
 }
 
 int main() {
@@ -72,6 +70,7 @@ int main() {
     i2c_multi_enable_address(0x71);
     i2c_multi_set_request_handler(i2c_request_handler);
     i2c_multi_set_stop_handler(i2c_stop_handler);
+    i2c_multi_set_write_buffer(write_buffer);
 
     while (true) {
         if (stop_pending) {
@@ -80,7 +79,7 @@ int main() {
             uint8_t bytes = stop_bytes;
             printf("\n%s %uB (0x%X): ", read ? "Read" : "Write", bytes, address);
             for (uint8_t i = 0; i < bytes; i++) {
-                printf("0x%X ", buffer[i]);
+                printf("0x%X ", read ? read_buffer[i] : write_buffer[i]);
             }
         }
         tight_loop_contents();

@@ -6,9 +6,11 @@
 
 #define CLK_DIV 1
 #define BUFFER_SIZE 256
+#define MAX_TRANSACTIONS 16
 
 static i2c_multi_t *i2c_multi;
 static uint8_t buffer[BUFFER_SIZE] = {0};
+static uint transaction[MAX_TRANSACTIONS] = {0};
 static void (*request_handler)(uint8_t address) = NULL;
 static void (*stop_handler)(uint8_t address, bool is_read, uint length) = NULL;
 
@@ -61,6 +63,11 @@ void i2c_multi_init(PIO pio, uint pin) {
 }
 
 uint8_t *i2c_multi_get_buffer(void) { return buffer; }
+
+void i2c_multi_set_write_buffer(uint8_t *buffer) {
+    i2c_multi->write_buffer = buffer;
+    i2c_multi->write_buffer_start = buffer;
+}
 
 void i2c_multi_set_request_handler(i2c_multi_request_handler_t handler) { request_handler = handler; }
 
@@ -230,10 +237,10 @@ static inline void byte_handler_pio(void) {
     if (i2c_multi->status == I2C_WRITE && is_address) {
         if (request_handler) request_handler(received >> 1);
         uint8_t value = 0;
-        if (i2c_multi->bytes_count < BUFFER_SIZE) {
-            value = transpond_byte(buffer[i2c_multi->bytes_count]);
+        //if (i2c_multi->bytes_count < BUFFER_SIZE) {
+            value = transpond_byte(i2c_multi->write_buffer[i2c_multi->bytes_count]);
             i2c_multi->bytes_count++;
-        }
+        //}
         pio_sm_put(i2c_multi->pio, i2c_multi->sm_read,
                    (((uint32_t)do_ack_program_instructions[5]) << 16) | do_ack_program_instructions[4]);
         pio_sm_put(i2c_multi->pio, i2c_multi->sm_read,
@@ -253,10 +260,10 @@ static inline void byte_handler_pio(void) {
     if (i2c_multi->status == I2C_WRITE && !is_address) {
         if (i2c_multi->length == -1 || (i2c_multi->length > 0 && i2c_multi->bytes_count < i2c_multi->length)) {
             uint8_t value = 0;
-            if (i2c_multi->bytes_count < BUFFER_SIZE) {
-                value = transpond_byte(buffer[i2c_multi->bytes_count]);
+            //if (i2c_multi->bytes_count < BUFFER_SIZE) {
+                value = transpond_byte(i2c_multi->write_buffer[i2c_multi->bytes_count]);
                 i2c_multi->bytes_count++;
-            }
+            //}
             pio_sm_put(i2c_multi->pio, i2c_multi->sm_write,
                        (((uint32_t)wait_ack_program_instructions[5]) << 16) | wait_ack_program_instructions[4]);
             pio_sm_put(i2c_multi->pio, i2c_multi->sm_write,
